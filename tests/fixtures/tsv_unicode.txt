@@ -1,0 +1,6 @@
+id	username	bio	emoji
+1	田中さん	プログラマー、コーヒー好き ☕	😊
+2	José_García	Desarrollador | Amante del café	🇪🇸
+3	user_emoji	I love coding 💻 and music 🎵	🚀
+4		Empty username cell	⚠️
+5	mixed_🎉	Unicode 日本語 mixed with English	✨

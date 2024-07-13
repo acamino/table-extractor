@@ -1,0 +1,10 @@
+id,name,description,notes
+1,"Smith, John","He said ""Hello""",Normal
+2,Empty Desc,,Has empty cell
+3,"Multi
+Line","Contains
+newlines",Tricky
+4,O'Brien,Apostrophe's here,Simple
+5,"Comma, Quote"" Pipe|","All ""special"" chars",Complex
+6,🎉 Party,Emoji in name 🥳,Fun
+7,,"Empty name cell",Edge case
