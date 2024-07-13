@@ -6,6 +6,10 @@ use table_extractor::parser::{CsvParser, MarkdownParser, MySqlParser, PostgresPa
 use table_extractor::writer::{CsvWriter, TsvWriter};
 use table_extractor::{Format, Parser, Writer};
 
+/// Maximum input size: 100 MB
+/// Prevents DoS attacks via unbounded memory allocation
+const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
+
 #[derive(ClapParser)]
 #[command(name = "tabx")]
 #[command(author = "Agustin Camino")]
@@ -32,10 +36,25 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    // Read input from stdin
+    // Read input from stdin with size limit to prevent DoS
     let mut input = String::new();
-    if let Err(e) = io::stdin().read_to_string(&mut input) {
-        eprintln!("tabx: error: Failed to read from stdin: {}", e);
+    let stdin = io::stdin();
+    let bytes_read = match stdin
+        .take(MAX_INPUT_SIZE as u64 + 1)
+        .read_to_string(&mut input)
+    {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("tabx: error: Failed to read from stdin: {}", e);
+            process::exit(3);
+        }
+    };
+
+    if bytes_read > MAX_INPUT_SIZE {
+        eprintln!(
+            "tabx: error: Input exceeds maximum size of {} MB",
+            MAX_INPUT_SIZE / 1024 / 1024
+        );
         process::exit(3);
     }
 
