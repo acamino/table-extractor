@@ -1,5 +1,17 @@
 use crate::Format;
+use once_cell::sync::Lazy;
 use regex::Regex;
+
+// Compile regexes once at startup for performance
+// These are used for format auto-detection
+static MYSQL_BORDER: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\+[-+]+\+$").expect("Invalid MySQL border regex"));
+
+static POSTGRES_SEP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[\s\-]+\+[\s\-\+]+$").expect("Invalid PostgreSQL separator regex"));
+
+static MARKDOWN_SEP: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\s*\|[\s:-]*-[\s:-]*\|").expect("Invalid Markdown separator regex"));
 
 /// Detects the table format from input text
 pub fn detect_format(input: &str) -> Format {
@@ -35,10 +47,7 @@ pub fn detect_format(input: &str) -> Format {
 
 fn is_mysql_format(lines: &[&str]) -> bool {
     // MySQL tables have border lines like +----+----+
-    let border_pattern = Regex::new(r"^\+[-+]+\+$").unwrap();
-    lines
-        .iter()
-        .any(|line| border_pattern.is_match(line.trim()))
+    lines.iter().any(|line| MYSQL_BORDER.is_match(line.trim()))
 }
 
 fn is_postgres_format(lines: &[&str]) -> bool {
@@ -48,14 +57,12 @@ fn is_postgres_format(lines: &[&str]) -> bool {
         return false;
     }
 
-    let separator_pattern = Regex::new(r"^[\s\-]+\+[\s\-\+]+$").unwrap();
-    lines.iter().any(|line| separator_pattern.is_match(line))
+    lines.iter().any(|line| POSTGRES_SEP.is_match(line))
 }
 
 fn is_markdown_format(lines: &[&str]) -> bool {
     // Markdown tables have separator lines like |---|---|
-    let separator_pattern = Regex::new(r"^\s*\|[\s:-]*-[\s:-]*\|").unwrap();
-    lines.iter().any(|line| separator_pattern.is_match(line))
+    lines.iter().any(|line| MARKDOWN_SEP.is_match(line))
 }
 
 fn is_tsv_format(lines: &[&str]) -> bool {
