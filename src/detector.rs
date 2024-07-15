@@ -66,12 +66,33 @@ fn is_markdown_format(lines: &[&str]) -> bool {
 }
 
 fn is_tsv_format(lines: &[&str]) -> bool {
-    // TSV contains tabs and no pipe characters or box-drawing
-    let has_tabs = lines.iter().any(|line| line.contains('\t'));
-    let has_pipes = lines.iter().any(|line| line.contains('|'));
-    let has_plus = lines.iter().any(|line| line.contains('+'));
+    // TSV contains tabs. We need to distinguish from formats that use pipes as delimiters.
+    if lines.is_empty() {
+        return false;
+    }
 
-    has_tabs && !has_pipes && !has_plus
+    let has_tabs = lines.iter().any(|line| line.contains('\t'));
+    if !has_tabs {
+        return false;
+    }
+
+    // Check if pipes appear in a way that suggests they're structural delimiters
+    // Markdown tables start and end with pipes: |col1|col2|
+    let looks_like_markdown = lines.iter().any(|line| {
+        let trimmed = line.trim();
+        trimmed.starts_with('|') && trimmed.ends_with('|')
+    });
+
+    // PostgreSQL tables have pipes as column separators consistently across lines
+    // Count how many lines have the pattern " | " (space-pipe-space)
+    // If most lines have them and in similar counts, it's likely PostgreSQL format
+    let lines_with_postgres_pipes = lines.iter().filter(|line| line.contains(" | ")).count();
+    let looks_like_postgres = lines_with_postgres_pipes > lines.len() / 2;
+
+    // Check for MySQL-style box drawing (+ characters in borders)
+    let has_plus_borders = lines.iter().any(|line| line.contains('+'));
+
+    has_tabs && !looks_like_markdown && !looks_like_postgres && !has_plus_borders
 }
 
 #[cfg(test)]

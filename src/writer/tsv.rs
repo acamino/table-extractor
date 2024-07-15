@@ -20,6 +20,18 @@ impl Default for TsvWriter {
 
 impl Writer for TsvWriter {
     fn write(&self, table: &Table, output: &mut dyn IoWrite) -> Result<()> {
+        // Validate headers don't contain delimiter to prevent data corruption
+        for header in &table.headers {
+            if header.contains(self.delimiter) {
+                return Err(crate::error::Error::InvalidFormat(
+                    format!(
+                        "Header '{}' contains delimiter character '{}'. Use -o csv for proper escaping.",
+                        header, self.delimiter
+                    )
+                ));
+            }
+        }
+
         // Write headers
         writeln!(
             output,
@@ -27,8 +39,18 @@ impl Writer for TsvWriter {
             table.headers.join(&self.delimiter.to_string())
         )?;
 
-        // Write rows
-        for row in &table.rows {
+        // Validate and write rows
+        for (idx, row) in table.rows.iter().enumerate() {
+            for cell in row {
+                if cell.contains(self.delimiter) {
+                    return Err(crate::error::Error::InvalidFormat(
+                        format!(
+                            "Row {} contains delimiter character '{}' in data. Use -o csv for proper escaping.",
+                            idx + 1, self.delimiter
+                        )
+                    ));
+                }
+            }
             writeln!(output, "{}", row.join(&self.delimiter.to_string()))?;
         }
 
@@ -71,5 +93,54 @@ mod tests {
 
         let result = String::from_utf8(output).unwrap();
         assert_eq!(result, "id|name\n1|Alice\n");
+    }
+
+    #[test]
+    fn test_reject_tab_in_data() {
+        let table = Table::new(
+            vec!["id".to_string(), "name".to_string()],
+            vec![vec!["1".to_string(), "Alice\tBob".to_string()]],
+        );
+
+        let writer = TsvWriter::default();
+        let mut output = Vec::new();
+        let result = writer.write(&table, &mut output);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("delimiter"));
+    }
+
+    #[test]
+    fn test_reject_custom_delimiter_in_data() {
+        let table = Table::new(
+            vec!["id".to_string(), "name".to_string()],
+            vec![vec!["1".to_string(), "Uses | pipes".to_string()]],
+        );
+
+        let writer = TsvWriter::new('|');
+        let mut output = Vec::new();
+        let result = writer.write(&table, &mut output);
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("delimiter"));
+        assert!(error_msg.contains("|"));
+    }
+
+    #[test]
+    fn test_reject_delimiter_in_header() {
+        let table = Table::new(
+            vec!["id".to_string(), "name|alias".to_string()],
+            vec![vec!["1".to_string(), "Alice".to_string()]],
+        );
+
+        let writer = TsvWriter::new('|');
+        let mut output = Vec::new();
+        let result = writer.write(&table, &mut output);
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Header"));
+        assert!(error_msg.contains("name|alias"));
     }
 }
