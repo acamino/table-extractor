@@ -52,9 +52,9 @@ fn is_separator_line(line: &str) -> bool {
 
 fn parse_postgres_row(line: &str) -> Vec<String> {
     // Split by | and trim each cell
+    // Note: We preserve empty cells as they represent NULL values in PostgreSQL
     line.split('|')
         .map(|cell| cell.trim().to_string())
-        .filter(|cell| !cell.is_empty()) // Remove empty cells from edges
         .collect()
 }
 
@@ -80,6 +80,35 @@ mod tests {
         assert_eq!(
             table.rows[0],
             vec!["1", "1", "gid://shopify/...", "2299", "t"]
+        );
+    }
+
+    #[test]
+    fn test_parse_postgres_with_empty_cells() {
+        // PostgreSQL NULL values appear as empty cells
+        let input = r#" id | name  | email
+----+-------+-------
+  1 | Alice | a@b.c
+  2 | Bob   |
+  3 |       | c@d.e"#;
+
+        let parser = PostgresParser;
+        let table = parser.parse(input).unwrap();
+
+        assert_eq!(table.headers, vec!["id", "name", "email"]);
+        assert_eq!(table.rows.len(), 3);
+
+        // All rows should have 3 cells, even if some are empty
+        assert_eq!(table.rows[0], vec!["1", "Alice", "a@b.c"]);
+        assert_eq!(
+            table.rows[1],
+            vec!["2", "Bob", ""],
+            "Empty email should be preserved"
+        );
+        assert_eq!(
+            table.rows[2],
+            vec!["3", "", "c@d.e"],
+            "Empty name should be preserved"
         );
     }
 }
