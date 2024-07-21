@@ -19,7 +19,9 @@ impl Default for CsvWriter {
 
 impl Writer for CsvWriter {
     fn write(&self, table: &Table, output: &mut dyn IoWrite) -> Result<()> {
-        let mut writer = WriterBuilder::new().has_headers(false).from_writer(vec![]);
+        // Write directly to output instead of buffering in Vec
+        // The csv crate uses an internal buffer, and stdout is already wrapped in BufWriter
+        let mut writer = WriterBuilder::new().has_headers(false).from_writer(output);
 
         // Write headers
         writer.write_record(&table.headers)?;
@@ -29,11 +31,8 @@ impl Writer for CsvWriter {
             writer.write_record(row)?;
         }
 
-        let data = writer
-            .into_inner()
-            .map_err(|e| crate::error::Error::ParseError(format!("Failed to write CSV: {}", e)))?;
-
-        output.write_all(&data)?;
+        // Flush the csv writer to ensure all data is written
+        writer.flush()?;
 
         Ok(())
     }
