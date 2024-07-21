@@ -66,33 +66,23 @@ fn is_markdown_format(lines: &[&str]) -> bool {
 }
 
 fn is_tsv_format(lines: &[&str]) -> bool {
-    // TSV contains tabs. We need to distinguish from formats that use pipes as delimiters.
-    if lines.is_empty() {
-        return false;
-    }
-
+    // TSV contains tabs
     let has_tabs = lines.iter().any(|line| line.contains('\t'));
     if !has_tabs {
         return false;
     }
 
-    // Check if pipes appear in a way that suggests they're structural delimiters
-    // Markdown tables start and end with pipes: |col1|col2|
+    // If it looks like a structured format (Markdown/PostgreSQL), it's not TSV
+    // Markdown has pipes at consistent positions (|col|col|)
+    // PostgreSQL has separator lines with +
     let looks_like_markdown = lines.iter().any(|line| {
         let trimmed = line.trim();
         trimmed.starts_with('|') && trimmed.ends_with('|')
     });
 
-    // PostgreSQL tables have pipes as column separators consistently across lines
-    // Count how many lines have the pattern " | " (space-pipe-space)
-    // If most lines have them and in similar counts, it's likely PostgreSQL format
-    let lines_with_postgres_pipes = lines.iter().filter(|line| line.contains(" | ")).count();
-    let looks_like_postgres = lines_with_postgres_pipes > lines.len() / 2;
+    let has_plus = lines.iter().any(|line| line.contains('+'));
 
-    // Check for MySQL-style box drawing (+ characters in borders)
-    let has_plus_borders = lines.iter().any(|line| line.contains('+'));
-
-    has_tabs && !looks_like_markdown && !looks_like_postgres && !has_plus_borders
+    has_tabs && !looks_like_markdown && !has_plus
 }
 
 #[cfg(test)]
@@ -137,5 +127,12 @@ mod tests {
     fn test_detect_csv() {
         let input = "id,name\n1,Alice\n2,Bob";
         assert_eq!(detect_format(input), Format::CSV);
+    }
+
+    #[test]
+    fn test_detect_tsv_with_pipes_in_data() {
+        // TSV should be detected even if data contains pipe characters
+        let input = "id\tname\tdesc\n1\tAlice\tUses | pipes\n2\tBob\tNormal text";
+        assert_eq!(detect_format(input), Format::TSV);
     }
 }
