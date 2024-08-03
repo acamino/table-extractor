@@ -34,7 +34,7 @@ impl Parser for MySqlParser {
             }
         }
 
-        Ok(Table::new(headers, rows))
+        Table::new_validated(headers, rows)
     }
 }
 

@@ -42,7 +42,7 @@ impl Parser for CsvParser {
             rows.push(row);
         }
 
-        Ok(Table::new(headers, rows))
+        Table::new_validated(headers, rows)
     }
 }
 

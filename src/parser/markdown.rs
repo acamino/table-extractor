@@ -41,7 +41,7 @@ impl Parser for MarkdownParser {
             }
         }
 
-        Ok(Table::new(headers, rows))
+        Table::new_validated(headers, rows)
     }
 }
 

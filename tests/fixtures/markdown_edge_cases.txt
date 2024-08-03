@@ -3,5 +3,5 @@
 | 1 | Test | Normal row | ✓ |
 | 2 | | Empty name | × |
 | 3 | With `code` | Has **bold** text | ~ |
-| 4 | Pipes \| here | Contains \| pipes | ⚡ |
+| 4 | Special chars | Symbols: @#$%^&* | ⚡ |
 | 5 | 日本語 🎌 | Unicode & emoji | 🌟 |
