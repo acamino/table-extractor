@@ -7,6 +7,10 @@ use error::Result;
 use std::io::Write;
 use std::str::FromStr;
 
+/// Maximum number of columns allowed in a table.
+/// Prevents out-of-memory attacks via excessively wide tables.
+const MAX_COLUMNS: usize = 10_000;
+
 /// Represents a parsed table with headers and rows
 #[derive(Debug, Clone, PartialEq)]
 pub struct Table {
@@ -42,8 +46,19 @@ impl Table {
     ///
     /// # Errors
     ///
-    /// Returns an error if any row has a different column count than the header
+    /// Returns an error if:
+    /// - The number of columns exceeds MAX_COLUMNS (10,000)
+    /// - Any row has a different column count than the header
     pub fn new_validated(headers: Vec<String>, rows: Vec<Vec<String>>) -> Result<Self> {
+        // Check column count limit
+        if headers.len() > MAX_COLUMNS {
+            return Err(error::Error::InvalidFormat(format!(
+                "Too many columns: {} (maximum: {})",
+                headers.len(),
+                MAX_COLUMNS
+            )));
+        }
+
         let table = Self { headers, rows };
         table.validate()?;
         Ok(table)
@@ -171,5 +186,33 @@ mod tests {
     fn test_validate_no_rows() {
         let table = Table::new(vec!["id".to_string(), "name".to_string()], vec![]);
         assert!(table.validate().is_ok());
+    }
+
+    #[test]
+    fn test_new_validated_rejects_too_many_columns() {
+        let headers: Vec<String> = (0..10001).map(|i| format!("col{}", i)).collect();
+        let result = Table::new_validated(headers, vec![]);
+        assert!(result.is_err());
+        if let Err(error::Error::InvalidFormat(msg)) = result {
+            assert!(msg.contains("Too many columns"));
+            assert!(msg.contains("10001"));
+            assert!(msg.contains("10000"));
+        } else {
+            panic!("Expected InvalidFormat error");
+        }
+    }
+
+    #[test]
+    fn test_new_validated_accepts_max_columns() {
+        let headers: Vec<String> = (0..10000).map(|i| format!("col{}", i)).collect();
+        let result = Table::new_validated(headers, vec![]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_new_validated_accepts_just_under_max() {
+        let headers: Vec<String> = (0..9999).map(|i| format!("col{}", i)).collect();
+        let result = Table::new_validated(headers, vec![]);
+        assert!(result.is_ok());
     }
 }
