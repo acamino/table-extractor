@@ -1,5 +1,12 @@
 use crate::error::Result;
 use crate::{Parser, Table};
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+/// Regex pattern for PostgreSQL separator lines.
+/// Valid format: `----+-------+-----` (sequences of dashes separated by plus signs)
+static POSTGRES_SEP_LINE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex"));
 
 pub struct PostgresParser;
 
@@ -46,8 +53,9 @@ impl Parser for PostgresParser {
 }
 
 fn is_separator_line(line: &str) -> bool {
-    // PostgreSQL separator line contains only -, +, and whitespace
-    line.chars().all(|c| matches!(c, '-' | '+' | ' ')) && line.contains('-') && line.contains('+')
+    // Use strict regex to match valid PostgreSQL separator format: ----+----+----
+    // This prevents false positives like "+ - + -" or "++----"
+    POSTGRES_SEP_LINE.is_match(line)
 }
 
 fn parse_postgres_row(line: &str) -> Vec<String> {
@@ -110,5 +118,47 @@ mod tests {
             vec!["3", "", "c@d.e"],
             "Empty name should be preserved"
         );
+    }
+
+    #[test]
+    fn test_separator_validation_valid() {
+        // Valid PostgreSQL separator patterns
+        assert!(is_separator_line("----+-------+-----"));
+        assert!(is_separator_line("  ----+----  ")); // with leading/trailing spaces
+        assert!(is_separator_line("-+-")); // minimal valid
+        assert!(is_separator_line("-----+-----+-----+-----")); // multiple sections
+        assert!(is_separator_line("--+--+--")); // short dashes
+    }
+
+    #[test]
+    fn test_separator_validation_invalid() {
+        // Invalid patterns that should be rejected
+        assert!(!is_separator_line("+ - + -")); // spaces between
+        assert!(!is_separator_line("++++----")); // no proper structure
+        assert!(!is_separator_line("  +  -  +  ")); // random spacing
+        assert!(!is_separator_line("----")); // only dashes, no plus
+        assert!(!is_separator_line("++++")); // only plus signs
+        assert!(!is_separator_line("-")); // single dash
+        assert!(!is_separator_line("+")); // single plus
+        assert!(!is_separator_line("")); // empty
+        assert!(!is_separator_line("  ")); // only spaces
+        assert!(!is_separator_line("+-+-")); // starts with plus
+    }
+
+    #[test]
+    fn test_reject_invalid_separator_no_data() {
+        // Input with invalid separator should not find a separator
+        let input = r#" id | name
++ - + -
+  1 | Alice"#;
+
+        let parser = PostgresParser;
+        let table = parser.parse(input).unwrap();
+
+        // Without a valid separator, it treats all lines as potential headers
+        // The invalid separator line gets parsed as a data row
+        assert_eq!(table.headers, vec!["id", "name"]);
+        // The rest are treated as rows (before finding separator)
+        assert_eq!(table.rows.len(), 0);
     }
 }
