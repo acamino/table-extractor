@@ -219,6 +219,15 @@ impl Table {
 /// // Aliases are supported
 /// let format = Format::from_str("psql").unwrap();
 /// assert_eq!(format, Format::PostgreSQL);
+///
+/// // Display trait converts back to canonical string
+/// assert_eq!(format.to_string(), "postgresql");
+/// assert_eq!(Format::CSV.to_string(), "csv");
+///
+/// // Round-trip conversion works
+/// let original = Format::Markdown;
+/// let parsed = Format::from_str(&original.to_string()).unwrap();
+/// assert_eq!(original, parsed);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
@@ -253,6 +262,19 @@ impl FromStr for Format {
                 s
             )),
         }
+    }
+}
+
+impl std::fmt::Display for Format {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Format::Markdown => "markdown",
+            Format::MySQL => "mysql",
+            Format::PostgreSQL => "postgresql",
+            Format::CSV => "csv",
+            Format::TSV => "tsv",
+        };
+        write!(f, "{}", name)
     }
 }
 
@@ -428,5 +450,35 @@ mod tests {
         let headers: Vec<String> = (0..9999).map(|i| format!("col{}", i)).collect();
         let result = Table::new_validated(headers, vec![]);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_format_display() {
+        // Test Display trait for all Format variants
+        assert_eq!(Format::Markdown.to_string(), "markdown");
+        assert_eq!(Format::MySQL.to_string(), "mysql");
+        assert_eq!(Format::PostgreSQL.to_string(), "postgresql");
+        assert_eq!(Format::CSV.to_string(), "csv");
+        assert_eq!(Format::TSV.to_string(), "tsv");
+    }
+
+    #[test]
+    fn test_format_display_roundtrip() {
+        use std::str::FromStr;
+
+        // Test that Display output can be parsed back to the same Format
+        let formats = vec![
+            Format::Markdown,
+            Format::MySQL,
+            Format::PostgreSQL,
+            Format::CSV,
+            Format::TSV,
+        ];
+
+        for format in formats {
+            let string = format.to_string();
+            let parsed = Format::from_str(&string).unwrap();
+            assert_eq!(format, parsed, "Round-trip failed for {}", string);
+        }
     }
 }
