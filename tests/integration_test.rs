@@ -3,6 +3,50 @@ use predicates::prelude::*;
 use std::fs;
 
 #[test]
+fn test_completions_bash() {
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("completions")
+        .arg("bash")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("_tabx()"))
+        .stdout(predicate::str::contains("COMPREPLY"));
+}
+
+#[test]
+fn test_completions_zsh() {
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("completions")
+        .arg("zsh")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("#compdef tabx"));
+}
+
+#[test]
+fn test_completions_fish() {
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("completions")
+        .arg("fish")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("complete -c tabx"));
+}
+
+#[test]
+fn test_completions_help() {
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("completions")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Generate shell completions"))
+        .stdout(predicate::str::contains("bash"))
+        .stdout(predicate::str::contains("zsh"))
+        .stdout(predicate::str::contains("fish"));
+}
+
+#[test]
 fn test_cli_help() {
     let mut cmd = Command::cargo_bin("tabx").unwrap();
     cmd.arg("--help")

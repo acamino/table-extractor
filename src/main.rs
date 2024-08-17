@@ -1,4 +1,5 @@
-use clap::Parser as ClapParser;
+use clap::{CommandFactory, Parser as ClapParser, Subcommand};
+use clap_complete::{generate, Shell};
 use std::io::{self, BufWriter, Read};
 use std::process;
 use table_extractor::detector::detect_format;
@@ -16,6 +17,9 @@ const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
 #[command(version = "1.0.0")]
 #[command(about = "Convert various tabular data formats into TSV or CSV", long_about = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Force input format detection (auto, markdown, mysql, postgres, csv, tsv)
     #[arg(short = 'i', long = "input-format", default_value = "auto")]
     input_format: String,
@@ -33,9 +37,35 @@ struct Cli {
     input_delimiter: Option<char>,
 }
 
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate shell completions
+    Completions {
+        /// The shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+}
+
 fn main() {
     let cli = Cli::parse();
 
+    // Handle subcommands
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Completions { shell } => {
+                let mut cmd = Cli::command();
+                generate(shell, &mut cmd, "tabx", &mut io::stdout());
+                return;
+            }
+        }
+    }
+
+    // Default behavior: convert table format
+    convert_table(cli);
+}
+
+fn convert_table(cli: Cli) {
     // Read input from stdin with size limit to prevent DoS
     let mut input = String::new();
     let stdin = io::stdin();
