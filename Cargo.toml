@@ -2,6 +2,7 @@
 name = "table-extractor"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.90.0"
 authors = ["Agustin Camino"]
 description = "A command-line tool to convert various tabular data formats (Markdown, MySQL, PostgreSQL, CSV, TSV) into TSV or CSV for easy spreadsheet pasting"
 license = "MIT OR Apache-2.0"
