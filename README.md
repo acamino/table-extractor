@@ -108,7 +108,7 @@ psql -c "SELECT * FROM products" | tabx
 
 ```bash
 git clone https://github.com/acamino/table-extractor
-cd tabx
+cd table-extractor
 cargo build
 cargo test
 cargo install --path .
