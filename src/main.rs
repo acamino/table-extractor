@@ -14,7 +14,7 @@ const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
 #[derive(ClapParser)]
 #[command(name = "tabx")]
 #[command(author = "Agustin Camino")]
-#[command(version = "1.0.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Convert various tabular data formats into TSV or CSV", long_about = None)]
 struct Cli {
     #[command(subcommand)]

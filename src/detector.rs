@@ -8,10 +8,11 @@ static MYSQL_BORDER: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\+[-+]+\+$").expect("Invalid MySQL border regex"));
 
 static POSTGRES_SEP: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^[\s\-]+\+[\s\-\+]+$").expect("Invalid PostgreSQL separator regex"));
+    Lazy::new(|| Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex"));
 
-static MARKDOWN_SEP: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\s*\|[\s:-]*-[\s:-]*\|").expect("Invalid Markdown separator regex"));
+static MARKDOWN_SEP: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^\s*\|(?:\s*:?\s*-+\s*:?\s*\|)+").expect("Invalid Markdown separator regex")
+});
 
 /// Detects the table format from input text
 pub fn detect_format(input: &str) -> Format {
@@ -134,5 +135,104 @@ mod tests {
         // TSV should be detected even if data contains pipe characters
         let input = "id\tname\tdesc\n1\tAlice\tUses | pipes\n2\tBob\tNormal text";
         assert_eq!(detect_format(input), Format::TSV);
+    }
+
+    // ReDoS vulnerability tests - ensure patterns complete quickly even with attack vectors
+    #[test]
+    fn test_postgres_sep_redos_protection() {
+        // Previously vulnerable pattern: r"^[\s\-]+\+[\s\-\+]+$"
+        // Attack vector: many spaces/dashes followed by non-matching char
+        let attack_string = format!("{} X", " -".repeat(100));
+
+        // This should complete quickly (not hang)
+        let result = POSTGRES_SEP.is_match(&attack_string);
+        assert!(
+            !result,
+            "Attack string should not match valid PostgreSQL separator"
+        );
+
+        // Valid PostgreSQL separators should still match
+        assert!(POSTGRES_SEP.is_match("----+----+----"));
+        assert!(POSTGRES_SEP.is_match("  ----+-------  "));
+        assert!(POSTGRES_SEP.is_match("-+-"));
+    }
+
+    #[test]
+    fn test_markdown_sep_redos_protection() {
+        // Previously vulnerable pattern: r"^\s*\|[\s:-]*-[\s:-]*\|"
+        // Attack vector: pipe followed by many spaces/colons/dashes without final pipe
+        let attack_string = format!("|{} X", " :-".repeat(100));
+
+        // This should complete quickly (not hang)
+        let result = MARKDOWN_SEP.is_match(&attack_string);
+        assert!(
+            !result,
+            "Attack string should not match valid Markdown separator"
+        );
+
+        // Valid Markdown separators should still match
+        assert!(MARKDOWN_SEP.is_match("|---|---|"));
+        assert!(MARKDOWN_SEP.is_match("|:---|:---:|"));
+        assert!(MARKDOWN_SEP.is_match("| --- | --- |"));
+        assert!(MARKDOWN_SEP.is_match("|:-|:-:|"));
+    }
+
+    #[test]
+    fn test_mysql_border_edge_cases() {
+        // Ensure MySQL border regex is robust
+        assert!(MYSQL_BORDER.is_match("+--+"));
+        assert!(MYSQL_BORDER.is_match("+----+----+"));
+        assert!(MYSQL_BORDER.is_match("+-+"));
+
+        // Should not match invalid patterns
+        assert!(!MYSQL_BORDER.is_match("+ - +"));
+        assert!(!MYSQL_BORDER.is_match("++"));
+        assert!(!MYSQL_BORDER.is_match("----"));
+    }
+
+    #[test]
+    fn test_postgres_format_detection_with_various_separators() {
+        // Test detection with different valid PostgreSQL separator styles
+        let input1 = " id | name\n----+-------\n  1 | Alice";
+        assert_eq!(detect_format(input1), Format::PostgreSQL);
+
+        let input2 = " id | name\n--+--\n  1 | Alice";
+        assert_eq!(detect_format(input2), Format::PostgreSQL);
+
+        let input3 = " id | name | age\n----+-------+-----\n  1 | Alice | 30";
+        assert_eq!(detect_format(input3), Format::PostgreSQL);
+    }
+
+    #[test]
+    fn test_markdown_format_detection_with_alignment() {
+        // Test detection with different Markdown alignment styles
+        let input1 = "| id | name |\n|---|---|\n| 1 | Alice |";
+        assert_eq!(detect_format(input1), Format::Markdown);
+
+        let input2 = "| id | name |\n|:---|:---:|\n| 1 | Alice |";
+        assert_eq!(detect_format(input2), Format::Markdown);
+
+        let input3 = "| id | name |\n| :--- | ---: |\n| 1 | Alice |";
+        assert_eq!(detect_format(input3), Format::Markdown);
+    }
+
+    #[test]
+    fn test_no_catastrophic_backtracking_large_input() {
+        // Create a large string that would cause catastrophic backtracking
+        // with the old vulnerable patterns
+        let large_attack = format!("{}X", " -".repeat(1000));
+
+        // This should complete quickly
+        use std::time::Instant;
+        let start = Instant::now();
+        let _ = POSTGRES_SEP.is_match(&large_attack);
+        let duration = start.elapsed();
+
+        // Should complete in milliseconds, not seconds
+        assert!(
+            duration.as_millis() < 100,
+            "Regex matching took too long: {:?} - possible ReDoS vulnerability",
+            duration
+        );
     }
 }
