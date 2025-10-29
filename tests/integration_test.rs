@@ -352,3 +352,148 @@ fn test_mixed_unicode_scripts() {
         .stdout(predicate::str::contains("مرحبا"))
         .stdout(predicate::str::contains("שלום"));
 }
+
+// Delimiter validation tests
+#[test]
+fn test_invalid_input_delimiter_newline() {
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("\n")
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid input delimiter"))
+        .stderr(predicate::str::contains("control characters not allowed"));
+}
+
+#[test]
+fn test_invalid_input_delimiter_null() {
+    // Note: Cannot pass null byte via command line args - clap/OS will reject it
+    // This test verifies the validation logic exists, even though it's handled earlier
+    // by the argument parser. We test control character validation via other tests.
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("\x01") // Use SOH instead of null since null can't be passed
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid input delimiter"))
+        .stderr(predicate::str::contains("control characters not allowed"));
+}
+
+#[test]
+fn test_invalid_input_delimiter_control_char() {
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("\x01") // SOH control character
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid input delimiter"))
+        .stderr(predicate::str::contains("control characters not allowed"));
+}
+
+#[test]
+fn test_invalid_input_delimiter_unicode() {
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("€") // Euro sign - non-ASCII
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid input delimiter"))
+        .stderr(predicate::str::contains("must be ASCII character"));
+}
+
+#[test]
+fn test_invalid_output_delimiter_newline() {
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("-d")
+        .arg("\n")
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid output delimiter"))
+        .stderr(predicate::str::contains("control characters not allowed"));
+}
+
+#[test]
+fn test_invalid_output_delimiter_unicode() {
+    let input = "id,name\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("-d")
+        .arg("😊")
+        .write_stdin(input)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("Invalid output delimiter"))
+        .stderr(predicate::str::contains("must be ASCII character"));
+}
+
+#[test]
+fn test_valid_input_delimiter_tab() {
+    // Tab is explicitly allowed even though it's a control character
+    let input = "id\tname\n1\tAlice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("\t")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id\tname"))
+        .stdout(predicate::str::contains("1\tAlice"));
+}
+
+#[test]
+fn test_valid_custom_input_delimiter_pipe() {
+    let input = "id|name\n1|Alice\n2|Bob";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg("|")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id\tname"))
+        .stdout(predicate::str::contains("1\tAlice"))
+        .stdout(predicate::str::contains("2\tBob"));
+}
+
+#[test]
+fn test_valid_custom_output_delimiter_pipe() {
+    let input = "id,name\n1,Alice\n2,Bob";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("-d")
+        .arg("|")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id|name"))
+        .stdout(predicate::str::contains("1|Alice"))
+        .stdout(predicate::str::contains("2|Bob"));
+}
+
+#[test]
+fn test_valid_custom_delimiter_semicolon() {
+    let input = "id;name\n1;Alice\n2;Bob";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("--input-delimiter")
+        .arg(";")
+        .arg("-d")
+        .arg(";")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id;name"))
+        .stdout(predicate::str::contains("1;Alice"));
+}

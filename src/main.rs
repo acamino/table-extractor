@@ -47,6 +47,37 @@ enum Commands {
     },
 }
 
+/// Validates that a delimiter character is safe for CSV/TSV parsing
+fn validate_delimiter(c: char, delimiter_type: &str) -> Result<u8, String> {
+    // Reject control characters except tab (which is valid for TSV)
+    if c.is_control() && c != '\t' {
+        return Err(format!(
+            "Invalid {} delimiter '{}': control characters not allowed (except tab for TSV)",
+            delimiter_type,
+            c.escape_default()
+        ));
+    }
+
+    // Ensure ASCII to prevent truncation issues when casting to u8
+    if !c.is_ascii() {
+        return Err(format!(
+            "Invalid {} delimiter '{}': must be ASCII character",
+            delimiter_type, c
+        ));
+    }
+
+    // Reject common problematic characters
+    if matches!(c, '\n' | '\r' | '\0') {
+        return Err(format!(
+            "Invalid {} delimiter '{}': newline and null characters not allowed",
+            delimiter_type,
+            c.escape_default()
+        ));
+    }
+
+    Ok(c as u8)
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -58,6 +89,21 @@ fn main() {
                 generate(shell, &mut cmd, "tabx", &mut io::stdout());
                 return;
             }
+        }
+    }
+
+    // Validate custom delimiters early
+    if let Some(delimiter) = cli.input_delimiter {
+        if let Err(e) = validate_delimiter(delimiter, "input") {
+            eprintln!("tabx: error: {}", e);
+            process::exit(2);
+        }
+    }
+
+    if let Some(delimiter) = cli.delimiter {
+        if let Err(e) = validate_delimiter(delimiter, "output") {
+            eprintln!("tabx: error: {}", e);
+            process::exit(2);
         }
     }
 

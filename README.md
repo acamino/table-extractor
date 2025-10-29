@@ -1,5 +1,8 @@
 # tabx
 
+[![CI](https://github.com/acamino/table-extractor/actions/workflows/ci.yml/badge.svg)](https://github.com/acamino/table-extractor/actions)
+[![Version](https://img.shields.io/crates/v/table-extractor.svg)](https://crates.io/crates/table-extractor)
+
 A simple, fast command-line tool to convert between table formats (Markdown, MySQL, PostgreSQL, CSV, TSV) with automatic format detection.
 
 ## Installation
@@ -66,6 +69,11 @@ Options:
   -h, --help                       Print help
   -V, --version                    Print version
 ```
+
+**Delimiter Requirements:**
+- Must be a single ASCII character
+- Control characters are not allowed (except tab `\t` for TSV)
+- Common valid delimiters: `,` (comma), `|` (pipe), `;` (semicolon), `:` (colon)
 
 ## Format Examples
 
