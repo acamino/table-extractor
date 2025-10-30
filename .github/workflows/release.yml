@@ -74,6 +74,10 @@ jobs:
             target: aarch64-apple-darwin
             artifact_name: tabx
             asset_name: tabx-macos-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: tabx.exe
+            asset_name: tabx-windows-x86_64.exe
 
     steps:
       - uses: actions/checkout@v4
