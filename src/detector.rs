@@ -1,18 +1,28 @@
 use crate::Format;
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::OnceLock;
 
 // Compile regexes once at startup for performance
 // These are used for format auto-detection
-static MYSQL_BORDER: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\+[-+]+\+$").expect("Invalid MySQL border regex"));
+static MYSQL_BORDER: OnceLock<Regex> = OnceLock::new();
+static POSTGRES_SEP: OnceLock<Regex> = OnceLock::new();
+static MARKDOWN_SEP: OnceLock<Regex> = OnceLock::new();
 
-static POSTGRES_SEP: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex"));
+fn get_mysql_border() -> &'static Regex {
+    MYSQL_BORDER.get_or_init(|| Regex::new(r"^\+[-+]+\+$").expect("Invalid MySQL border regex"))
+}
 
-static MARKDOWN_SEP: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\s*\|(?:\s*:?\s*-+\s*:?\s*\|)+").expect("Invalid Markdown separator regex")
-});
+fn get_postgres_sep() -> &'static Regex {
+    POSTGRES_SEP.get_or_init(|| {
+        Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex")
+    })
+}
+
+fn get_markdown_sep() -> &'static Regex {
+    MARKDOWN_SEP.get_or_init(|| {
+        Regex::new(r"^\s*\|(?:\s*:?\s*-+\s*:?\s*\|)+").expect("Invalid Markdown separator regex")
+    })
+}
 
 /// Detects the table format from input text
 pub fn detect_format(input: &str) -> Format {
@@ -48,7 +58,9 @@ pub fn detect_format(input: &str) -> Format {
 
 fn is_mysql_format(lines: &[&str]) -> bool {
     // MySQL tables have border lines like +----+----+
-    lines.iter().any(|line| MYSQL_BORDER.is_match(line.trim()))
+    lines
+        .iter()
+        .any(|line| get_mysql_border().is_match(line.trim()))
 }
 
 fn is_postgres_format(lines: &[&str]) -> bool {
@@ -58,12 +70,12 @@ fn is_postgres_format(lines: &[&str]) -> bool {
         return false;
     }
 
-    lines.iter().any(|line| POSTGRES_SEP.is_match(line))
+    lines.iter().any(|line| get_postgres_sep().is_match(line))
 }
 
 fn is_markdown_format(lines: &[&str]) -> bool {
     // Markdown tables have separator lines like |---|---|
-    lines.iter().any(|line| MARKDOWN_SEP.is_match(line))
+    lines.iter().any(|line| get_markdown_sep().is_match(line))
 }
 
 fn is_tsv_format(lines: &[&str]) -> bool {
@@ -145,16 +157,16 @@ mod tests {
         let attack_string = format!("{} X", " -".repeat(100));
 
         // This should complete quickly (not hang)
-        let result = POSTGRES_SEP.is_match(&attack_string);
+        let result = get_postgres_sep().is_match(&attack_string);
         assert!(
             !result,
             "Attack string should not match valid PostgreSQL separator"
         );
 
         // Valid PostgreSQL separators should still match
-        assert!(POSTGRES_SEP.is_match("----+----+----"));
-        assert!(POSTGRES_SEP.is_match("  ----+-------  "));
-        assert!(POSTGRES_SEP.is_match("-+-"));
+        assert!(get_postgres_sep().is_match("----+----+----"));
+        assert!(get_postgres_sep().is_match("  ----+-------  "));
+        assert!(get_postgres_sep().is_match("-+-"));
     }
 
     #[test]
@@ -164,30 +176,30 @@ mod tests {
         let attack_string = format!("|{} X", " :-".repeat(100));
 
         // This should complete quickly (not hang)
-        let result = MARKDOWN_SEP.is_match(&attack_string);
+        let result = get_markdown_sep().is_match(&attack_string);
         assert!(
             !result,
             "Attack string should not match valid Markdown separator"
         );
 
         // Valid Markdown separators should still match
-        assert!(MARKDOWN_SEP.is_match("|---|---|"));
-        assert!(MARKDOWN_SEP.is_match("|:---|:---:|"));
-        assert!(MARKDOWN_SEP.is_match("| --- | --- |"));
-        assert!(MARKDOWN_SEP.is_match("|:-|:-:|"));
+        assert!(get_markdown_sep().is_match("|---|---|"));
+        assert!(get_markdown_sep().is_match("|:---|:---:|"));
+        assert!(get_markdown_sep().is_match("| --- | --- |"));
+        assert!(get_markdown_sep().is_match("|:-|:-:|"));
     }
 
     #[test]
     fn test_mysql_border_edge_cases() {
         // Ensure MySQL border regex is robust
-        assert!(MYSQL_BORDER.is_match("+--+"));
-        assert!(MYSQL_BORDER.is_match("+----+----+"));
-        assert!(MYSQL_BORDER.is_match("+-+"));
+        assert!(get_mysql_border().is_match("+--+"));
+        assert!(get_mysql_border().is_match("+----+----+"));
+        assert!(get_mysql_border().is_match("+-+"));
 
         // Should not match invalid patterns
-        assert!(!MYSQL_BORDER.is_match("+ - +"));
-        assert!(!MYSQL_BORDER.is_match("++"));
-        assert!(!MYSQL_BORDER.is_match("----"));
+        assert!(!get_mysql_border().is_match("+ - +"));
+        assert!(!get_mysql_border().is_match("++"));
+        assert!(!get_mysql_border().is_match("----"));
     }
 
     #[test]
@@ -225,7 +237,7 @@ mod tests {
         // This should complete quickly
         use std::time::Instant;
         let start = Instant::now();
-        let _ = POSTGRES_SEP.is_match(&large_attack);
+        let _ = get_postgres_sep().is_match(&large_attack);
         let duration = start.elapsed();
 
         // Should complete in milliseconds, not seconds

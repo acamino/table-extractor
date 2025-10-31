@@ -1,12 +1,17 @@
 use crate::error::Result;
 use crate::{Parser, Table};
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::OnceLock;
 
 /// Regex pattern for PostgreSQL separator lines.
 /// Valid format: `----+-------+-----` (sequences of dashes separated by plus signs)
-static POSTGRES_SEP_LINE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex"));
+static POSTGRES_SEP_LINE: OnceLock<Regex> = OnceLock::new();
+
+fn get_postgres_sep_line() -> &'static Regex {
+    POSTGRES_SEP_LINE.get_or_init(|| {
+        Regex::new(r"^\s*-+(\+-+)+\s*$").expect("Invalid PostgreSQL separator regex")
+    })
+}
 
 pub struct PostgresParser;
 
@@ -55,7 +60,7 @@ impl Parser for PostgresParser {
 fn is_separator_line(line: &str) -> bool {
     // Use strict regex to match valid PostgreSQL separator format: ----+----+----
     // This prevents false positives like "+ - + -" or "++----"
-    POSTGRES_SEP_LINE.is_match(line)
+    get_postgres_sep_line().is_match(line)
 }
 
 fn parse_postgres_row(line: &str) -> Vec<String> {
