@@ -42,11 +42,17 @@ fn parse_mysql_row(line: &str) -> Vec<String> {
     // Remove leading and trailing pipes
     let trimmed = line.trim().trim_start_matches('|').trim_end_matches('|');
 
+    // Estimate column count for pre-allocation
+    let estimated_cols = trimmed.chars().filter(|&c| c == '|').count() + 1;
+    let mut cells = Vec::with_capacity(estimated_cols);
+
     // Split by | and trim each cell
-    trimmed
-        .split('|')
-        .map(|cell| cell.trim().to_string())
-        .collect()
+    // Pre-allocation reduces allocations for large tables
+    for cell in trimmed.split('|') {
+        cells.push(cell.trim().to_string());
+    }
+
+    cells
 }
 
 #[cfg(test)]

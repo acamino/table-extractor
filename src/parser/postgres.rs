@@ -64,11 +64,18 @@ fn is_separator_line(line: &str) -> bool {
 }
 
 fn parse_postgres_row(line: &str) -> Vec<String> {
+    // Estimate column count for pre-allocation
+    let estimated_cols = line.chars().filter(|&c| c == '|').count() + 1;
+    let mut cells = Vec::with_capacity(estimated_cols);
+
     // Split by | and trim each cell
     // Note: We preserve empty cells as they represent NULL values in PostgreSQL
-    line.split('|')
-        .map(|cell| cell.trim().to_string())
-        .collect()
+    // Pre-allocation reduces allocations for large tables
+    for cell in line.split('|') {
+        cells.push(cell.trim().to_string());
+    }
+
+    cells
 }
 
 #[cfg(test)]
