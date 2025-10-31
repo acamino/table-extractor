@@ -497,3 +497,70 @@ fn test_valid_custom_delimiter_semicolon() {
         .stdout(predicate::str::contains("id;name"))
         .stdout(predicate::str::contains("1;Alice"));
 }
+
+// Early delimiter conflict detection tests
+#[test]
+fn test_early_detection_pipe_in_header() {
+    // Header contains pipe, trying to output with pipe delimiter should fail early
+    let input = "id,name|alias\n1,Alice";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.write_stdin(input)
+        .arg("-d")
+        .arg("|")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains(
+            "Header 'name|alias' contains delimiter character '|'",
+        ))
+        .stderr(predicate::str::contains("Use -o csv for proper escaping"));
+}
+
+#[test]
+fn test_early_detection_custom_delimiter_in_data() {
+    // Data contains colon, trying to output with colon delimiter should fail early
+    let input = "id,name,time\n1,Alice,12:30";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.write_stdin(input)
+        .arg("-d")
+        .arg(":")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains(
+            "Row 1 contains delimiter character ':'",
+        ))
+        .stderr(predicate::str::contains("Use -o csv for proper escaping"));
+}
+
+#[test]
+fn test_early_detection_semicolon_in_header() {
+    // Header contains semicolon, trying to output with semicolon delimiter should fail early
+    let input = "id,name;alias,email\n1,Alice,a@b.c";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.write_stdin(input)
+        .arg("-d")
+        .arg(";")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains("Header"))
+        .stderr(predicate::str::contains("name;alias"))
+        .stderr(predicate::str::contains("delimiter character"))
+        .stderr(predicate::str::contains("csv"));
+}
+
+#[test]
+fn test_no_conflict_check_for_csv_output() {
+    // CSV output should work fine even with commas in data (escaping handles it)
+    let input = "id|name\n1|Alice, Bob";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.write_stdin(input)
+        .arg("--input-delimiter")
+        .arg("|")
+        .arg("-o")
+        .arg("csv")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"Alice, Bob\""));
+}

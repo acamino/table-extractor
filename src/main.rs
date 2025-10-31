@@ -186,6 +186,43 @@ fn convert_table(cli: Cli) {
         }
     };
 
+    // Early delimiter conflict detection for TSV/custom delimiters
+    // Check if output delimiter exists in data BEFORE writing
+    // This provides fast feedback instead of failing after writing starts
+    let output_delimiter = if let Some(delimiter) = cli.delimiter {
+        Some(delimiter)
+    } else if cli.output_format == "tsv" {
+        Some('\t')
+    } else {
+        None // CSV handles escaping, no need to check
+    };
+
+    if let Some(delimiter) = output_delimiter {
+        // Check headers
+        for header in &table.headers {
+            if header.contains(delimiter) {
+                eprintln!(
+                    "tabx: error: Header '{}' contains delimiter character '{}'. Use -o csv for proper escaping.",
+                    header, delimiter
+                );
+                process::exit(1);
+            }
+        }
+
+        // Check rows
+        for (idx, row) in table.rows.iter().enumerate() {
+            for cell in row {
+                if cell.contains(delimiter) {
+                    eprintln!(
+                        "tabx: error: Row {} contains delimiter character '{}' in data. Use -o csv for proper escaping.",
+                        idx + 1, delimiter
+                    );
+                    process::exit(1);
+                }
+            }
+        }
+    }
+
     // Select the appropriate writer
     // Use BufWriter for 3-6x performance improvement on large outputs
     let mut stdout = BufWriter::new(io::stdout());
