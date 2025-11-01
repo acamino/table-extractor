@@ -48,9 +48,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            Error::IoError(err) => write!(f, "I/O error: {}", err),
-            Error::InvalidFormat(msg) => write!(f, "Invalid format: {}", msg),
+            Error::ParseError(msg) => write!(f, "{}", msg),
+            Error::IoError(err) => write!(f, "{}", err),
+            Error::InvalidFormat(msg) => write!(f, "{}", msg),
             Error::InconsistentColumns {
                 row,
                 expected,
