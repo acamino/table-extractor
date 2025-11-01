@@ -2,6 +2,9 @@ use crate::Format;
 use regex::Regex;
 use std::sync::OnceLock;
 
+/// Number of lines to examine for format detection
+const FORMAT_DETECTION_LINE_LIMIT: usize = 10;
+
 // Compile regexes once at startup for performance
 // These are used for format auto-detection
 static MYSQL_BORDER: OnceLock<Regex> = OnceLock::new();
@@ -26,7 +29,7 @@ fn get_markdown_sep() -> &'static Regex {
 
 /// Detects the table format from input text
 pub fn detect_format(input: &str) -> Format {
-    let lines: Vec<&str> = input.lines().take(10).collect();
+    let lines: Vec<&str> = input.lines().take(FORMAT_DETECTION_LINE_LIMIT).collect();
 
     if lines.is_empty() {
         return Format::CSV; // Default

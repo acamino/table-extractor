@@ -13,6 +13,15 @@ use table_extractor::{Format, Parser, Writer};
 /// Prevents DoS attacks via unbounded memory allocation
 const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
 
+/// Success exit code
+const EXIT_SUCCESS: i32 = 0;
+/// Parse error exit code (invalid input data)
+const EXIT_PARSE_ERROR: i32 = 1;
+/// Invalid arguments exit code (user error)
+const EXIT_INVALID_ARGS: i32 = 2;
+/// I/O error exit code (file not found, permission denied, etc.)
+const EXIT_IO_ERROR: i32 = 3;
+
 #[derive(ClapParser)]
 #[command(name = "tabx")]
 #[command(author = "Agustin Camino")]
@@ -102,14 +111,14 @@ fn main() {
     if let Some(delimiter) = cli.input_delimiter {
         if let Err(e) = validate_delimiter(delimiter, "input") {
             eprintln!("tabx: error: {}", e);
-            process::exit(2);
+            process::exit(EXIT_INVALID_ARGS);
         }
     }
 
     if let Some(delimiter) = cli.delimiter {
         if let Err(e) = validate_delimiter(delimiter, "output") {
             eprintln!("tabx: error: {}", e);
-            process::exit(2);
+            process::exit(EXIT_INVALID_ARGS);
         }
     }
 
@@ -129,13 +138,13 @@ fn convert_table(cli: Cli) {
                         path.display(),
                         MAX_INPUT_SIZE / 1024 / 1024
                     );
-                    process::exit(3);
+                    process::exit(EXIT_IO_ERROR);
                 }
                 content
             }
             Err(e) => {
                 eprintln!("tabx: error: Cannot read {}: {}", path.display(), e);
-                process::exit(3);
+                process::exit(EXIT_IO_ERROR);
             }
         }
     } else {
@@ -149,7 +158,7 @@ fn convert_table(cli: Cli) {
             Ok(n) => n,
             Err(e) => {
                 eprintln!("tabx: error: Failed to read from stdin: {}", e);
-                process::exit(3);
+                process::exit(EXIT_IO_ERROR);
             }
         };
 
@@ -158,7 +167,7 @@ fn convert_table(cli: Cli) {
                 "tabx: error: Input exceeds maximum size of {} MB",
                 MAX_INPUT_SIZE / 1024 / 1024
             );
-            process::exit(3);
+            process::exit(EXIT_IO_ERROR);
         }
 
         input
@@ -166,7 +175,7 @@ fn convert_table(cli: Cli) {
 
     // Handle empty input
     if input.trim().is_empty() {
-        process::exit(0);
+        process::exit(EXIT_SUCCESS);
     }
 
     // Detect or parse input format
@@ -177,7 +186,7 @@ fn convert_table(cli: Cli) {
             Ok(fmt) => fmt,
             Err(err) => {
                 eprintln!("tabx: error: {}", err);
-                process::exit(2);
+                process::exit(EXIT_INVALID_ARGS);
             }
         }
     };
@@ -212,7 +221,7 @@ fn convert_table(cli: Cli) {
         Ok(t) => t,
         Err(e) => {
             eprintln!("tabx: error: {}", e);
-            process::exit(1);
+            process::exit(EXIT_PARSE_ERROR);
         }
     };
 
@@ -235,7 +244,7 @@ fn convert_table(cli: Cli) {
                     "tabx: error: Header '{}' contains delimiter character '{}'. Use -o csv for proper escaping.",
                     header, delimiter
                 );
-                process::exit(1);
+                process::exit(EXIT_PARSE_ERROR);
             }
         }
 
@@ -247,7 +256,7 @@ fn convert_table(cli: Cli) {
                         "tabx: error: Row {} contains delimiter character '{}' in data. Use -o csv for proper escaping.",
                         idx + 1, delimiter
                     );
-                    process::exit(1);
+                    process::exit(EXIT_PARSE_ERROR);
                 }
             }
         }
@@ -274,13 +283,13 @@ fn convert_table(cli: Cli) {
                     "tabx: error: Invalid output format '{}'. Valid formats: tsv, csv",
                     cli.output_format
                 );
-                process::exit(2);
+                process::exit(EXIT_INVALID_ARGS);
             }
         }
     };
 
     if let Err(e) = result {
         eprintln!("tabx: error: {}", e);
-        process::exit(1);
+        process::exit(EXIT_IO_ERROR);
     }
 }

@@ -1,3 +1,15 @@
+## 0.2.1 (2025-11-01)
+
+Added:
+
+- File argument support for Unix-style usage (`tabx file.csv` instead of `cat file.csv | tabx`)
+- Named constants for exit codes and detection limits to improve code maintainability
+
+Fixed:
+
+- GitHub release workflow now correctly renames binaries before upload
+- Standardized error message format across all modules (removed redundant prefixes)
+
 ## 0.2.0 (2025-10-31)
 
 **BREAKING CHANGES:**
