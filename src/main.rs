@@ -1,6 +1,8 @@
 use clap::{CommandFactory, Parser as ClapParser, Subcommand};
 use clap_complete::{generate, Shell};
+use std::fs;
 use std::io::{self, BufWriter, Read};
+use std::path::PathBuf;
 use std::process;
 use table_extractor::detector::detect_format;
 use table_extractor::parser::{CsvParser, MarkdownParser, MySqlParser, PostgresParser};
@@ -35,6 +37,10 @@ struct Cli {
     /// Custom input delimiter for CSV/TSV
     #[arg(long = "input-delimiter")]
     input_delimiter: Option<char>,
+
+    /// Input file (reads from stdin if not provided)
+    #[arg(value_name = "FILE")]
+    input: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -112,27 +118,51 @@ fn main() {
 }
 
 fn convert_table(cli: Cli) {
-    // Read input from stdin with size limit to prevent DoS
-    let mut input = String::new();
-    let stdin = io::stdin();
-    let bytes_read = match stdin
-        .take(MAX_INPUT_SIZE as u64 + 1)
-        .read_to_string(&mut input)
-    {
-        Ok(n) => n,
-        Err(e) => {
-            eprintln!("tabx: error: Failed to read from stdin: {}", e);
+    // Read input from file or stdin
+    let input = if let Some(path) = &cli.input {
+        // Read from file
+        match fs::read_to_string(path) {
+            Ok(content) => {
+                if content.len() > MAX_INPUT_SIZE {
+                    eprintln!(
+                        "tabx: error: File {} exceeds maximum size of {} MB",
+                        path.display(),
+                        MAX_INPUT_SIZE / 1024 / 1024
+                    );
+                    process::exit(3);
+                }
+                content
+            }
+            Err(e) => {
+                eprintln!("tabx: error: Cannot read {}: {}", path.display(), e);
+                process::exit(3);
+            }
+        }
+    } else {
+        // Read from stdin with size limit to prevent DoS
+        let mut input = String::new();
+        let stdin = io::stdin();
+        let bytes_read = match stdin
+            .take(MAX_INPUT_SIZE as u64 + 1)
+            .read_to_string(&mut input)
+        {
+            Ok(n) => n,
+            Err(e) => {
+                eprintln!("tabx: error: Failed to read from stdin: {}", e);
+                process::exit(3);
+            }
+        };
+
+        if bytes_read > MAX_INPUT_SIZE {
+            eprintln!(
+                "tabx: error: Input exceeds maximum size of {} MB",
+                MAX_INPUT_SIZE / 1024 / 1024
+            );
             process::exit(3);
         }
-    };
 
-    if bytes_read > MAX_INPUT_SIZE {
-        eprintln!(
-            "tabx: error: Input exceeds maximum size of {} MB",
-            MAX_INPUT_SIZE / 1024 / 1024
-        );
-        process::exit(3);
-    }
+        input
+    };
 
     // Handle empty input
     if input.trim().is_empty() {

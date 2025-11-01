@@ -18,10 +18,12 @@ cargo install --path .
 ## Usage
 
 ```bash
-# Basic usage - reads stdin, writes stdout
-pbpaste | tabx | pbcopy
+# From file (recommended)
+tabx data.csv
+tabx input.txt -o csv > output.csv
 
-# Convert to CSV
+# From stdin
+pbpaste | tabx | pbcopy
 cat data.txt | tabx -o csv > clean.csv
 
 # Force input format
@@ -31,13 +33,14 @@ mysql -e "SELECT * FROM users" | tabx -i mysql
 ## Examples
 
 ```bash
+# File input (like wc, cat, head, tail)
+tabx data.csv > output.tsv
+tabx -o csv users.txt > users.csv
+tabx -i markdown README.md
+
 # Database output to spreadsheet
 mysql -e "SELECT * FROM companies" | tabx -o csv > companies.csv
 psql -c "SELECT * FROM users" | tabx | pbcopy
-
-# File conversion
-cat README.md | tabx > tables.tsv
-cat data.csv | tabx | cut -f1,3 > selected_columns.tsv
 
 # Pipeline composition
 pbpaste | tabx | grep "active" | wc -l
@@ -59,7 +62,10 @@ Output formats: **TSV** (default), **CSV**, or custom delimiter.
 ## Command-line Options
 
 ```
-Usage: tabx [OPTIONS]
+Usage: tabx [OPTIONS] [FILE]
+
+Arguments:
+  [FILE]  Input file (reads from stdin if not provided)
 
 Options:
   -i, --input-format <FORMAT>      Force input format (auto, markdown, mysql, postgres, csv, tsv)

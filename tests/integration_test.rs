@@ -564,3 +564,78 @@ fn test_no_conflict_check_for_csv_output() {
         .success()
         .stdout(predicate::str::contains("\"Alice, Bob\""));
 }
+
+#[test]
+fn test_file_input_csv() {
+    // Create a temporary CSV file
+    let temp_file = "test_input.csv";
+    fs::write(temp_file, "id,name\n1,Alice\n2,Bob").unwrap();
+
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg(temp_file)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id\tname"))
+        .stdout(predicate::str::contains("1\tAlice"))
+        .stdout(predicate::str::contains("2\tBob"));
+
+    // Clean up
+    fs::remove_file(temp_file).unwrap();
+}
+
+#[test]
+fn test_file_input_with_format_flag() {
+    let temp_file = "test_markdown.txt";
+    fs::write(temp_file, "| id | name |\n|----|----|----|\n| 1 | Alice |").unwrap();
+
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("-i")
+        .arg("markdown")
+        .arg(temp_file)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id\tname"))
+        .stdout(predicate::str::contains("1\tAlice"));
+
+    fs::remove_file(temp_file).unwrap();
+}
+
+#[test]
+fn test_file_input_nonexistent() {
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("nonexistent_file.csv")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Cannot read"))
+        .stderr(predicate::str::contains("nonexistent_file.csv"));
+}
+
+#[test]
+fn test_file_input_with_output_format() {
+    let temp_file = "test_output.csv";
+    fs::write(temp_file, "id,name\n1,Alice\n2,Bob").unwrap();
+
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.arg("-o")
+        .arg("csv")
+        .arg(temp_file)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id,name"))
+        .stdout(predicate::str::contains("1,Alice"))
+        .stdout(predicate::str::contains("2,Bob"));
+
+    fs::remove_file(temp_file).unwrap();
+}
+
+#[test]
+fn test_stdin_still_works() {
+    // Ensure stdin input still works when no file is provided
+    let input = "id,name\n1,Alice\n2,Bob";
+    let mut cmd = Command::cargo_bin("tabx").unwrap();
+    cmd.write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("id\tname"))
+        .stdout(predicate::str::contains("1\tAlice"));
+}
