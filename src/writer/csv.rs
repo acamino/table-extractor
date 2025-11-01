@@ -24,10 +24,10 @@ impl Writer for CsvWriter {
         let mut writer = WriterBuilder::new().has_headers(false).from_writer(output);
 
         // Write headers
-        writer.write_record(&table.headers)?;
+        writer.write_record(table.headers())?;
 
         // Write rows
-        for row in &table.rows {
+        for row in table.rows() {
             writer.write_record(row)?;
         }
 

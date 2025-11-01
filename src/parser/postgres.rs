@@ -93,12 +93,12 @@ mod tests {
         let table = parser.parse(input).unwrap();
 
         assert_eq!(
-            table.headers,
-            vec!["id", "store_id", "shopify_location_id", "name", "active"]
+            table.headers(),
+            &["id", "store_id", "shopify_location_id", "name", "active"]
         );
-        assert_eq!(table.rows.len(), 2);
+        assert_eq!(table.rows().len(), 2);
         assert_eq!(
-            table.rows[0],
+            table.rows()[0],
             vec!["1", "1", "gid://shopify/...", "2299", "t"]
         );
     }
@@ -115,18 +115,18 @@ mod tests {
         let parser = PostgresParser;
         let table = parser.parse(input).unwrap();
 
-        assert_eq!(table.headers, vec!["id", "name", "email"]);
-        assert_eq!(table.rows.len(), 3);
+        assert_eq!(table.headers(), &["id", "name", "email"]);
+        assert_eq!(table.rows().len(), 3);
 
         // All rows should have 3 cells, even if some are empty
-        assert_eq!(table.rows[0], vec!["1", "Alice", "a@b.c"]);
+        assert_eq!(table.rows()[0], vec!["1", "Alice", "a@b.c"]);
         assert_eq!(
-            table.rows[1],
+            table.rows()[1],
             vec!["2", "Bob", ""],
             "Empty email should be preserved"
         );
         assert_eq!(
-            table.rows[2],
+            table.rows()[2],
             vec!["3", "", "c@d.e"],
             "Empty name should be preserved"
         );
@@ -169,8 +169,8 @@ mod tests {
 
         // Without a valid separator, it treats all lines as potential headers
         // The invalid separator line gets parsed as a data row
-        assert_eq!(table.headers, vec!["id", "name"]);
+        assert_eq!(table.headers(), &["id", "name"]);
         // The rest are treated as rows (before finding separator)
-        assert_eq!(table.rows.len(), 0);
+        assert_eq!(table.rows().len(), 0);
     }
 }

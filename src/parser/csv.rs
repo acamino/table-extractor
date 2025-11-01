@@ -61,10 +61,10 @@ mod tests {
         let parser = CsvParser::csv();
         let table = parser.parse(input).unwrap();
 
-        assert_eq!(table.headers, vec!["id", "name"]);
-        assert_eq!(table.rows.len(), 2);
-        assert_eq!(table.rows[0], vec!["1", "Preston Carlton's Company"]);
-        assert_eq!(table.rows[1], vec!["2", "Fawzia Masud's Company"]);
+        assert_eq!(table.headers(), &["id", "name"]);
+        assert_eq!(table.rows().len(), 2);
+        assert_eq!(table.rows()[0], vec!["1", "Preston Carlton's Company"]);
+        assert_eq!(table.rows()[1], vec!["2", "Fawzia Masud's Company"]);
     }
 
     #[test]
@@ -74,10 +74,10 @@ mod tests {
         let parser = CsvParser::tsv();
         let table = parser.parse(input).unwrap();
 
-        assert_eq!(table.headers, vec!["id", "name"]);
-        assert_eq!(table.rows.len(), 2);
-        assert_eq!(table.rows[0], vec!["1", "Alice"]);
-        assert_eq!(table.rows[1], vec!["2", "Bob"]);
+        assert_eq!(table.headers(), &["id", "name"]);
+        assert_eq!(table.rows().len(), 2);
+        assert_eq!(table.rows()[0], vec!["1", "Alice"]);
+        assert_eq!(table.rows()[1], vec!["2", "Bob"]);
     }
 
     #[test]

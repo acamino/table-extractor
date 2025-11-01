@@ -35,10 +35,10 @@ const MAX_COLUMNS: usize = 10_000;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Table {
     /// Column headers
-    pub headers: Vec<String>,
+    headers: Vec<String>,
 
     /// Data rows, where each row should have the same length as headers
-    pub rows: Vec<Vec<String>>,
+    rows: Vec<Vec<String>>,
 }
 
 impl Table {
@@ -195,6 +195,66 @@ impl Table {
     pub fn column_count(&self) -> usize {
         self.headers.len()
     }
+
+    /// Returns a reference to the table headers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use table_extractor::Table;
+    ///
+    /// let table = Table::new(
+    ///     vec!["id".to_string(), "name".to_string()],
+    ///     vec![],
+    /// );
+    /// assert_eq!(table.headers(), &["id", "name"]);
+    /// ```
+    pub fn headers(&self) -> &[String] {
+        &self.headers
+    }
+
+    /// Returns a reference to the table rows.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use table_extractor::Table;
+    ///
+    /// let table = Table::new(
+    ///     vec!["id".to_string(), "name".to_string()],
+    ///     vec![
+    ///         vec!["1".to_string(), "Alice".to_string()],
+    ///         vec!["2".to_string(), "Bob".to_string()],
+    ///     ],
+    /// );
+    /// assert_eq!(table.rows().len(), 2);
+    /// assert_eq!(table.rows()[0], vec!["1", "Alice"]);
+    /// ```
+    pub fn rows(&self) -> &[Vec<String>] {
+        &self.rows
+    }
+
+    /// Consumes the table and returns the headers and rows.
+    ///
+    /// This is useful when you need ownership of the table's data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use table_extractor::Table;
+    ///
+    /// let table = Table::new(
+    ///     vec!["id".to_string(), "name".to_string()],
+    ///     vec![vec!["1".to_string(), "Alice".to_string()]],
+    /// );
+    ///
+    /// let (headers, rows) = table.into_parts();
+    /// assert_eq!(headers, vec!["id", "name"]);
+    /// assert_eq!(rows.len(), 1);
+    /// ```
+    pub fn into_parts(self) -> (Vec<String>, Vec<Vec<String>>) {
+        (self.headers, self.rows)
+    }
 }
 
 /// Supported table formats for parsing and auto-detection.
@@ -326,10 +386,10 @@ pub trait Parser {
 /// impl Writer for CustomWriter {
 ///     fn write(&self, table: &Table, output: &mut dyn IoWrite) -> Result<()> {
 ///         // Write headers
-///         writeln!(output, "{}", table.headers.join(","))?;
+///         writeln!(output, "{}", table.headers().join(","))?;
 ///
 ///         // Write rows
-///         for row in &table.rows {
+///         for row in table.rows() {
 ///             writeln!(output, "{}", row.join(","))?;
 ///         }
 ///

@@ -21,7 +21,7 @@ impl Default for TsvWriter {
 impl Writer for TsvWriter {
     fn write(&self, table: &Table, output: &mut dyn IoWrite) -> Result<()> {
         // Validate headers don't contain delimiter to prevent data corruption
-        for header in &table.headers {
+        for header in table.headers() {
             if header.contains(self.delimiter) {
                 return Err(crate::error::Error::InvalidFormat(
                     format!(
@@ -36,11 +36,11 @@ impl Writer for TsvWriter {
         writeln!(
             output,
             "{}",
-            table.headers.join(&self.delimiter.to_string())
+            table.headers().join(&self.delimiter.to_string())
         )?;
 
         // Validate and write rows
-        for (idx, row) in table.rows.iter().enumerate() {
+        for (idx, row) in table.rows().iter().enumerate() {
             for cell in row {
                 if cell.contains(self.delimiter) {
                     return Err(crate::error::Error::InvalidFormat(

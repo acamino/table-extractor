@@ -1,3 +1,25 @@
+## 0.2.0 (2025-10-31)
+
+**BREAKING CHANGES:**
+
+- Made `Table` struct fields (`headers` and `rows`) private to prevent invariant violations
+- API consumers must now use accessor methods: `headers()`, `rows()`, `into_parts()`
+
+Added:
+
+- Accessor methods for `Table`: `headers()`, `rows()`, and `into_parts()`
+- Early delimiter conflict detection - fails fast before processing large files
+- Input and output delimiter validation with helpful error messages
+- Windows support to CI and release workflows
+
+Changed:
+
+- Migrated from `once_cell` to `std::sync::OnceLock` (no external dependency needed)
+
+Performance:
+
+- Optimized string allocations in all parsers by pre-allocating Vec capacity
+
 ## 0.1.1 (2025-10-28)
 
 Security:

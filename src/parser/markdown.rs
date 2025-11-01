@@ -84,11 +84,11 @@ mod tests {
         let table = parser.parse(input).unwrap();
 
         assert_eq!(
-            table.headers,
-            vec!["API Metric Name", "MongoDB Slice", "Position"]
+            table.headers(),
+            &["API Metric Name", "MongoDB Slice", "Position"]
         );
-        assert_eq!(table.rows.len(), 2);
-        assert_eq!(table.rows[0], vec!["sessions", "ACQUISITION", "Index 0"]);
-        assert_eq!(table.rows[1], vec!["newUsers", "ACQUISITION", "Index 1"]);
+        assert_eq!(table.rows().len(), 2);
+        assert_eq!(table.rows()[0], vec!["sessions", "ACQUISITION", "Index 0"]);
+        assert_eq!(table.rows()[1], vec!["newUsers", "ACQUISITION", "Index 1"]);
     }
 }

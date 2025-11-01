@@ -199,7 +199,7 @@ fn convert_table(cli: Cli) {
 
     if let Some(delimiter) = output_delimiter {
         // Check headers
-        for header in &table.headers {
+        for header in table.headers() {
             if header.contains(delimiter) {
                 eprintln!(
                     "tabx: error: Header '{}' contains delimiter character '{}'. Use -o csv for proper escaping.",
@@ -210,7 +210,7 @@ fn convert_table(cli: Cli) {
         }
 
         // Check rows
-        for (idx, row) in table.rows.iter().enumerate() {
+        for (idx, row) in table.rows().iter().enumerate() {
             for cell in row {
                 if cell.contains(delimiter) {
                     eprintln!(

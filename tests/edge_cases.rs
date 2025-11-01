@@ -65,8 +65,8 @@ fn test_many_columns() {
 
     let table = table.unwrap();
     assert_eq!(table.column_count(), 1000);
-    assert_eq!(table.rows.len(), 1);
-    assert_eq!(table.rows[0].len(), 1000);
+    assert_eq!(table.rows().len(), 1);
+    assert_eq!(table.rows()[0].len(), 1000);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn test_very_long_cell() {
 
     assert!(table.is_ok());
     let table = table.unwrap();
-    assert_eq!(table.rows[0][1].len(), 1_000_000);
+    assert_eq!(table.rows()[0][1].len(), 1_000_000);
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn test_single_column_table() {
     assert!(table.is_ok());
     let table = table.unwrap();
     assert_eq!(table.column_count(), 1);
-    assert_eq!(table.rows.len(), 3);
+    assert_eq!(table.rows().len(), 3);
 }
 
 #[test]
@@ -189,8 +189,8 @@ fn test_table_with_empty_cells() {
 
     assert!(table.is_ok());
     let table = table.unwrap();
-    assert_eq!(table.rows[1][1], "");
-    assert_eq!(table.rows[1][2], "");
+    assert_eq!(table.rows()[1][1], "");
+    assert_eq!(table.rows()[1][2], "");
 }
 
 #[test]
