@@ -3,7 +3,7 @@ use regex::Regex;
 use std::sync::OnceLock;
 
 /// Number of lines to examine for format detection
-const FORMAT_DETECTION_LINE_LIMIT: usize = 10;
+const FORMAT_DETECTION_LINE_LIMIT: usize = 30;
 
 // Compile regexes once at startup for performance
 // These are used for format auto-detection
@@ -29,7 +29,11 @@ fn get_markdown_sep() -> &'static Regex {
 
 /// Detects the table format from input text
 pub fn detect_format(input: &str) -> Format {
-    let lines: Vec<&str> = input.lines().take(FORMAT_DETECTION_LINE_LIMIT).collect();
+    let lines: Vec<&str> = input
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .take(FORMAT_DETECTION_LINE_LIMIT)
+        .collect();
 
     if lines.is_empty() {
         return Format::CSV; // Default
@@ -249,5 +253,55 @@ mod tests {
             "Regex matching took too long: {:?} - possible ReDoS vulnerability",
             duration
         );
+    }
+
+    #[test]
+    fn test_detect_mysql_with_leading_empty_lines() {
+        let input = r#"
+
+
++----+-------+
+| id | name  |
++----+-------+
+|  1 | Alice |
++----+-------+"#;
+        assert_eq!(detect_format(input), Format::MySQL);
+    }
+
+    #[test]
+    fn test_detect_postgres_with_leading_empty_lines() {
+        let input = r#"
+
+ id | name
+----+-------
+  1 | Alice
+  2 | Bob"#;
+        assert_eq!(detect_format(input), Format::PostgreSQL);
+    }
+
+    #[test]
+    fn test_detect_markdown_with_leading_empty_lines() {
+        let input = r#"
+
+
+| id | name  |
+|----|-------|
+| 1  | Alice |
+| 2  | Bob   |"#;
+        assert_eq!(detect_format(input), Format::Markdown);
+    }
+
+    #[test]
+    fn test_detect_with_interleaved_empty_lines() {
+        let input = r#"
+
++----+-------+
+
+| id | name  |
++----+-------+
+
+|  1 | Alice |
++----+-------+"#;
+        assert_eq!(detect_format(input), Format::MySQL);
     }
 }
